@@ -218,9 +218,10 @@ func (cp *ControlPlane) useGoPluginConfig(t *testing.T, config *filtermanager.Fi
 		}
 	}
 
+	detectorRouteName := getRandomString(8)
 	defaultRoutes := []*route.Route{
 		{
-			Name: getRandomString(8),
+			Name: detectorRouteName,
 			Match: &route.RouteMatch{
 				PathSpecifier: &route.RouteMatch_Path{
 					Path: "/detect_if_the_rds_takes_effect",
@@ -286,7 +287,7 @@ func (cp *ControlPlane) useGoPluginConfig(t *testing.T, config *filtermanager.Fi
 
 	if willTimeout {
 		time.Sleep(1 * time.Second)
-		require.False(t, dp.Configured())
+		require.False(t, dp.Configured(detectorRouteName))
 
 		cp.updateConfig(t, Resources{
 			resource.RouteType: []types.Resource{
@@ -306,7 +307,7 @@ func (cp *ControlPlane) useGoPluginConfig(t *testing.T, config *filtermanager.Fi
 
 	// Wait for DP to use the configuration.
 	require.Eventually(t, func() bool {
-		return dp.Configured()
+		return dp.Configured(detectorRouteName)
 	}, 10*time.Second, 50*time.Millisecond, "failed to wait for DP to use the configuration")
 }
 

@@ -58,8 +58,6 @@ type DataPlane struct {
 	opt  *Option
 	done chan error
 
-	latestRouteVersion string
-
 	dataPlanePort string
 	adminAPIPort  string
 	soPath        string
@@ -590,7 +588,7 @@ func (dp *DataPlane) Grpcurl(importPath, protoFile, fullMethodName, req string) 
 	return cmd.CombinedOutput()
 }
 
-func (dp *DataPlane) Configured() bool {
+func (dp *DataPlane) Configured(expectedVersion string) bool {
 	resp, err := dp.Head("/detect_if_the_rds_takes_effect", nil)
 	if err != nil {
 		return false
@@ -599,11 +597,7 @@ func (dp *DataPlane) Configured() bool {
 		return false
 	}
 	name := resp.Header.Get("route-version")
-	if name == dp.latestRouteVersion {
-		return false
-	}
-	dp.latestRouteVersion = name
-	return true
+	return name == expectedVersion
 }
 
 func (dp *DataPlane) FlushCoverage() error {
