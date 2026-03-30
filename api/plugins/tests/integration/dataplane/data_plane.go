@@ -266,8 +266,9 @@ func StartDataPlane(t *testing.T, opt *Option) (*DataPlane, error) {
 	if _, ok := validationCache[digest]; !ok {
 		// Workaround for https://github.com/envoyproxy/envoy/issues/35961
 		// TODO: drop this once we upgrade to Envoy 1.30+
-		cfgFile, _ := os.Create(cfgFile.Name())
-		opt.Bootstrap.WriteToForValidation(cfgFile)
+		validationFile, _ := os.Create(cfgFile.Name())
+		opt.Bootstrap.WriteToForValidation(validationFile)
+		validationFile.Close()
 
 		validateCmd := cmdline + " " + envoyValidateCmd
 		cmds := strings.Fields(validateCmd)
@@ -286,8 +287,9 @@ func StartDataPlane(t *testing.T, opt *Option) (*DataPlane, error) {
 
 		validationCache[digest] = struct{}{}
 
-		cfgFile, _ = os.Create(cfgFile.Name())
-		cfgFile.Write(content)
+		restoreFile, _ := os.Create(cfgFile.Name())
+		restoreFile.Write(content)
+		restoreFile.Close()
 	}
 
 	if opt.LogLevel != "" {
@@ -366,6 +368,7 @@ func StartDataPlane(t *testing.T, opt *Option) (*DataPlane, error) {
 			select {
 			case err := <-done:
 				ticker.Stop()
+				dumpEnvoyLog(dir)
 				return nil, err
 			case <-deadline:
 				break loop
@@ -379,6 +382,7 @@ func StartDataPlane(t *testing.T, opt *Option) (*DataPlane, error) {
 
 	select {
 	case err := <-done:
+		dumpEnvoyLog(dir)
 		return nil, err
 	default:
 	}
@@ -386,6 +390,20 @@ func StartDataPlane(t *testing.T, opt *Option) (*DataPlane, error) {
 	dp.done = done
 
 	return dp, nil
+}
+
+func dumpEnvoyLog(dir string) {
+	stdoutPath := filepath.Join(dir, "stdout")
+	content, err := os.ReadFile(stdoutPath)
+	if err != nil {
+		logger.Info("failed to read envoy stdout for diagnostics", "err", err)
+		return
+	}
+	if len(content) > 0 {
+		logger.Info("envoy stdout on startup failure", "output", string(content))
+	} else {
+		logger.Info("envoy stdout is empty on startup failure")
+	}
 }
 
 func (dp *DataPlane) root() string {
