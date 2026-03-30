@@ -340,12 +340,13 @@ func StartDataPlane(t *testing.T, opt *Option) (*DataPlane, error) {
 
 	dp.cmd = cmd
 
-	done := make(chan error)
+	done := make(chan error, 1)
 	go func() {
 		logger.Info("start envoy")
 		err := dp.cmd.Start()
 		if err != nil {
 			logger.Error(err, "failed to start envoy")
+			done <- err
 			return
 		}
 		go func() { done <- cmd.Wait() }()
@@ -353,14 +354,27 @@ func StartDataPlane(t *testing.T, opt *Option) (*DataPlane, error) {
 
 	if isBinaryMode() {
 		// In binary mode, the port is open only after the control plane is up, which is called after
-		// the data plane is up. So we don't check if the port is open. Instead, we wait for a while
-		// to ensure the data plane can be started.
+		// the data plane is up. So we don't check if the port is open. Instead, we poll to
+		// ensure the data plane can be started, detecting early crashes immediately.
 		waitTime := 1 * time.Second
 		waitTimeEnv, _ := time.ParseDuration(os.Getenv("TEST_ENVOY_WAIT_BINARY_TO_START_TIME"))
 		if waitTimeEnv != 0 {
 			waitTime = waitTimeEnv
 		}
-		time.Sleep(waitTime)
+		deadline := time.After(waitTime)
+		ticker := time.NewTicker(50 * time.Millisecond)
+	loop:
+		for {
+			select {
+			case err := <-done:
+				ticker.Stop()
+				return nil, err
+			case <-deadline:
+				break loop
+			case <-ticker.C:
+			}
+		}
+		ticker.Stop()
 	} else {
 		helper.WaitServiceUp(t, ":"+dataPlanePort, "")
 	}
