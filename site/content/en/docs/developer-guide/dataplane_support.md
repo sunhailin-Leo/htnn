@@ -28,12 +28,16 @@ Since the Envoy Golang filter is still under development, almost every version i
 
 By default, the target API version of HTNN's data plane code is the latest officially released Envoy version. At the same time, it supports compiling a shared library that can run on previously released Envoy versions by using build tags. The currently supported versions are as follows:
 
-| Version | build tag                           |
-|---------|-------------------------------------|
-| dev     | envoydev                            |
-| 1.32    | Latest version, no build tag needed |
-| 1.31    | envoy1.31                           |
-| 1.29    | envoy1.29                           |
+| Version   | build tag                           | Min Go version |
+|-----------|-------------------------------------|----------------|
+| dev       | envoydev                            | 1.24.6         |
+| 1.38      | envoy1.35                           | 1.24.6         |
+| 1.37      | envoy1.35                           | 1.24.6         |
+| 1.36      | envoy1.35                           | 1.22           |
+| 1.35      | envoy1.35                           | 1.22           |
+| 1.32      | Latest version, no build tag needed | 1.22           |
+| 1.31      | envoy1.31                           | 1.22           |
+| 1.29      | envoy1.29                           | 1.22           |
 
 For example, to compile a shared library that can run on Envoy 1.29, you need to execute the following commands:
 

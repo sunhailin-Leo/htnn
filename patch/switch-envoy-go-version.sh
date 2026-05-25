@@ -35,7 +35,12 @@ if [[ "$envoy_version" =~ ^1\.32\.[0-9]+$ ]]; then
     exit 0
 fi
 
-if [[ ! "$envoy_version" =~ ^1\.(29|31|32|33|35)\. ]]; then
+if [[ "$envoy_version" =~ ^1\.(35|36|37|38)\.[0-9]+$ ]]; then
+    # 1.35~1.38 are supported via envoy1.35 build tag, only need to replace go.mod
+    :
+fi
+
+if [[ ! "$envoy_version" =~ ^1\.(29|31|32|33|35|36|37|38)\. ]]; then
     echo "Unsupported envoy version $envoy_version"
     exit 1
 fi
@@ -56,3 +61,11 @@ append_if_need() {
 # append to go.mod is easier than maintaining a go.mod file for -modfile flag
 append_if_need "replace github.com/envoyproxy/envoy => github.com/envoyproxy/envoy v$envoy_version" api/go.mod
 append_if_need "replace github.com/envoyproxy/envoy => github.com/envoyproxy/envoy v$envoy_version" plugins/go.mod
+
+# Envoy 1.37+ depends on go-control-plane/envoy submodule (split from the monolithic
+# go-control-plane). The contrib/ directory (v3alpha packages) moved to its own submodule:
+# go-control-plane/contrib. We require it explicitly so the v3alpha imports resolve.
+if [[ "$envoy_version" =~ ^1\.(3[7-9]|[4-9]) ]] || [[ "$envoy_version" =~ ^0\.0\.0 ]]; then
+    append_if_need "require github.com/envoyproxy/go-control-plane/contrib v1.36.0" api/go.mod
+    append_if_need "require github.com/envoyproxy/go-control-plane/contrib v1.36.0" plugins/go.mod
+fi
